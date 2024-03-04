@@ -2,3 +2,5 @@
 *.csv
 *.blend
 *.blend1
+*.mp4
+out/
