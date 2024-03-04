@@ -3,6 +3,7 @@ import bmesh
 from mathutils import Vector
 import os
 import csv
+import math
 
 def getData(path):
     sep = '\t'
@@ -115,7 +116,9 @@ def createCylinder(location, name, parent=None, collection=None):
     bm.free()
 
     # Move the object to the desired location
-    obj.location = Vector((location[0], location[1], initialZ))
+    obj.location = location
+    #for sphere
+    obj.rotation_euler = sphereRotation(location)
 
     return obj
 
@@ -134,12 +137,23 @@ def createText(string, location, scale, parent, col):
     textObj = bpy.context.object
     return textObj
 
-def keyframeLocations(obj, frame):
+def keyframeLocationsFlat(obj, frame):
     #set keyframe at 0 at frame
     obj.location = (obj.location[0], obj.location[1], initialZ)
     obj.keyframe_insert(data_path="location", frame=frame)
     #set keyframe at finalZ at frame + zSlideFrames
     obj.location = (obj.location[0], obj.location[1], finalZ)
+    obj.keyframe_insert(data_path="location", frame=frame + zSlideFrames)
+    return obj
+
+def keyframeLocations(obj, frame):
+    # set keyframe to current location at frame
+    obj.keyframe_insert(data_path="location", frame=frame)
+    # get the normal vector of the sphere at the location
+    normal = sphereNormal(obj.location)
+    # move the object in the normal direction by finalZ
+    obj.location = obj.location + normal * .1
+    # set keyframe at finalZ at frame + zSlideFrames
     obj.keyframe_insert(data_path="location", frame=frame + zSlideFrames)
     return obj
 
@@ -149,16 +163,38 @@ def equirectangularProjection(lat, lon):
     y = lat
     return (x, y)
 
+def sphericalProjection(lat, lon, radius=100):
+    # Convert latitude and longitude into radians
+    lat_rad = math.radians(90 - lat) # convert from latitude to inclination (theta)
+    lon_rad = math.radians(lon)
+
+    # Convert lat/lon (spherical coordinates) to cartesian coordinates
+    x = radius * math.sin(lat_rad) * math.cos(lon_rad)
+    y = radius * math.sin(lat_rad) * math.sin(lon_rad)
+    z = radius * math.cos(lat_rad)
+
+    return (x, y, z)
+
+def sphereNormal(location1, location2=(0, 0, 0)):
+    #returns the normal vector of the surface point 1 of a sphere at point 2
+    return Vector(location1) - Vector(location2)
+
+def sphereRotation(location):
+    #returns the x, y, z euler of a normal vector
+    normal = sphereNormal(location)
+    return normal.to_track_quat('Z', 'Y').to_euler()
+
 labeled = []
 def main():
     #collection for these objects
-    col = new_collection("Nodes")
-    tcol = new_collection("TextCollection", col)
+    col = new_collection("NodeCollection")
+    tcol = new_collection("Labels", col)
     location_collections = {}  # Dictionary to store collections for each location
     for i in range(len(data['Collection date'])):
         # create cylinder
         location = float(data['Latitude'][i]), float(data['Longitude'][i])
-        coords = equirectangularProjection(location[0], location[1])
+        # coords = equirectangularProjection(location[0], location[1])
+        coords = sphericalProjection(location[0], location[1])
         date = data['Collection date'][i]
         date = int(date)
         location_name = data['Location'][i]
@@ -187,11 +223,12 @@ def main():
         keyframeLocations(cyl, date)
 
 def layout():
-    col = new_collection("GridCollection")
+    col = new_collection("GridsCollection")
     #creates a grid of lat long points (equirectangular projection)
     for latitude in range(-90, 100, 10):
         for longitude in range(-180, 190, 20):
-            coords = equirectangularProjection(latitude, longitude)
+            #coords = equirectangularProjection(latitude, longitude)
+            coords = sphericalProjection(latitude, longitude)
             cyl = createCylinder(coords, str(latitude) + ', ' + str(longitude) + ' => ' + str(coords))
 
 def new_collection(name, parent=None):
