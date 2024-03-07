@@ -97,7 +97,7 @@ textScale = [1, 1, 1]
 textLocation = [.8, .5, .15]
 cylinderScale = [1, .1] #radius, height
 initialZ = 0
-finalZ = .001
+finalZ = .01
 zSlideFrames = 15
 step = 20
 cam_frame_back = 10
@@ -134,7 +134,6 @@ def createCylinder(location, name, parent=None, collection=None):
     # Add the object to the collection
     if collection is not None:
         collection.objects.link(obj)
-        bpy.context.collection.objects.unlink(obj)
 
     # Create a new bmesh object
     bm = bmesh.new()
@@ -171,7 +170,7 @@ def createCamera(sphereRadius = 100):
     empty.location = (0, 0, 0)
     camObj = bpy.data.objects.new("Camera", cam)
     camObj.parent = empty
-    camObj.location = (0, 0, sphereRadius * 1.4)
+    camObj.location = (0, 0, sphereRadius * 1.6)
     camObj.rotation_euler = (0, 0, 0)
     camObj.data.type = 'ORTHO'
     camObj.data.ortho_scale = sphereRadius
@@ -221,7 +220,7 @@ def keyframeLocationsFlat(obj, frame):
 
 def keyframeLocations(obj, frame):
     # set keyframe to current location at frame
-    obj.keyframe_insert(data_path="location", frame=frame)
+    obj.keyframe_insert(data_path="location", frame=frame * step)
     # get the normal vector of the sphere at the location
     normal = sphereNormal(obj.location)
     # move the object in the normal direction by finalZ
@@ -266,7 +265,7 @@ def createLine(location, name, parent=None, collection=None):
     # Create a new curve
     curve = bpy.data.curves.new(name, type='CURVE')
     curve.dimensions = '3D'
-    curve.resolution_u = 2
+    curve.resolution_u = 6
 
     # Create a new object associated with the curve
     obj = bpy.data.objects.new(name, curve)
@@ -401,7 +400,10 @@ def keyframeLineThickness(obj, frame, thickness):
 labeled = []
 def main(cameraEmpty):
     #collection for these objects
-    col = new_collection("NodeCollection")
+    if "NodeCollection" in bpy.data.collections:
+        col = bpy.data.collections["NodeCollection"]
+    else:
+        col = new_collection("NodeCollection")
     lcol = new_collection("Lines", col)
     tcol = new_collection("Labels", col)
     location_collections = {}  # Dictionary to store collections for each location
@@ -411,27 +413,31 @@ def main(cameraEmpty):
         # create cylinder
         latlon = float(data['Latitude'][i]), float(data['Longitude'][i])
 
-        if last_line is not None and latlon_dist(latlon, last_line[2]) > 4:
+        if last_line is not None and latlon_dist(latlon, last_line[2]) > 3:
             frame_counter += 1
-            if latlon_dist(latlon, last_line[2]) > 7:
+            if latlon_dist(latlon, last_line[2]) > 5:
                 frame_counter += 1  
+                if latlon_dist(latlon, last_line[2]) > 10:
+                    frame_counter += 1
+
         # coords = equirectangularProjection(location[0], location[1])
         coords = sphericalProjection(latlon[0], latlon[1])
         location_name = data['Location'][i]
+        
+        if location_name + "Nodes" not in location_collections:
+            #check if the collection exists in NodeCollection
+            if location_name + "Nodes" in bpy.data.collections:
+                location_collections[location_name] = bpy.data.collections[location_name + "Nodes"]
+            else:
+                location_collections[location_name] = new_collection(location_name + "Nodes", col)
 
-        cyl = createCylinder(coords, str(frame_counter) + ', ' + location_name + ', ' + str(coords))
+        # spawn the cylinder in the globe a lil
+        coordsback = Vector(coords) - sphereNormal(coords) * .003
+        cyl = createCylinder(coordsback, str(frame_counter) + ', ' + location_name + ', ' + str(coords), collection=location_collections[location_name])
 
         line, h1, h2 = createLine(coords, "Line from " + location_name + " at " + str(frame_counter), cyl, lcol)
         # h1 and h2 are the handles of the line for animation, and one point of the line is always at coords
 
-        # If a collection for this location does not exist, create it
-        if location_name not in location_collections:
-            location_collections[location_name] = new_collection(location_name, col)
-            location_collections[location_name + "Lines"] = new_collection(location_name + "Lines", location_collections[location_name])
-
-        # Add the cylinder to the collection for this location
-        location_collections[location_name].objects.link(cyl)
-        location_collections[location_name + "Lines"].objects.link(line)
 
         # create text and make a child of cylinder
         if location_name not in labeled:
@@ -450,25 +456,28 @@ def main(cameraEmpty):
         #line keyframes
         keyframeVisible(line, frame_counter)
         keyframeInvisible(line, frame_counter - 1)
-        keyframeInvisible(line, frame_counter + 2)
-        keyframeLineThickness(line, frame_counter - 1, 0)
-        keyframeLineThickness(line, frame_counter, 1)
-        keyframeLineThickness(line, frame_counter + 2, 0)
+        keyframeInvisible(line, frame_counter + 2, False)
+        keyframeLineThickness(line, frame_counter - 2, 0)
+        keyframeLineThickness(line, frame_counter - 1, 1)
+        keyframeLineThickness(line, frame_counter + 1, 0)
         
         keyframeLineFirst(h1, h2, frame_counter)
         if last_line is not None:
             # get a target lat lon
-            min_distance = 7
-            max = 12
+            min_distance = 75
+            max = 150
             i = random.randint(0, len(data['Collection date']) - 1)
             target = (float(data['Latitude'][i]), float(data['Longitude'][i]))
-            while max < latlon_dist(target, latlon) < min_distance or max < latlon_dist(target, last_line[2]) < min_distance:
+            target = sphericalProjection(target[0], target[1])
+            last = sphericalProjection(last_line[2][0], last_line[2][1])
+           
+            while max < distance(target, last) < min_distance or max < distance(target, coords) < min_distance * 1.5:
                 i = random.randint(0, len(data['Collection date']) - 1)
                 target = (float(data['Latitude'][i]), float(data['Longitude'][i]))
+                target = sphericalProjection(target[0], target[1])
 
             # to xyz
             target = sphericalProjection(target[0], target[1])
-            last = sphericalProjection(last_line[2][0], last_line[2][1])
             # get the midpoint between the two nodes
             half = ((target[0] + last[0]) / 2, (target[1] + last[1]) / 2, (target[2] + last[2]) / 2)
             # get the midpoint between the midpoint and the last node
@@ -478,18 +487,19 @@ def main(cameraEmpty):
             if distance(midpointhalf, (0, 0, 0)) < ensure:
                 #push it along normal to 110
                 normal = sphereNormal(midpointhalf)
-                midpointhalf = Vector(midpointhalf) + normal * (ensure - distance(midpointhalf, (0, 0, 0))) *.1
+                midpointhalf = Vector(midpointhalf) + normal * (ensure - distance(midpointhalf, (0, 0, 0))) *.07
 
             if distance(half, (0, 0, 0)) < ensure:
                 #push it along normal to 110
                 normal = sphereNormal(half)
-                half = Vector(half) + normal * (ensure - distance(half, (0, 0, 0))) *.01
+                half1 = Vector(half) + normal * (ensure - distance(half, (0, 0, 0))) *.03
+                half2 = Vector(half) + normal * (ensure - distance(half, (0, 0, 0))) *.07
 
             last_line[0].name = "H1 from " + last_line[3] + " to " + data['Location'][i] + ", " + str(half) + "->" + str(target)
             last_line[1].name = "H2 from " + last_line[3] + " to " + data['Location'][i] + ", " + str(midpointhalf) + "->" + str(half)
 
-            keyframeLineSecond(last_line[0], last_line[1], frame_counter, half, midpointhalf)
-            keyframeLineThird(last_line[0], last_line[1], frame_counter + 1, target, half)
+            keyframeLineSecond(last_line[0], last_line[1], frame_counter, half1, midpointhalf)
+            keyframeLineThird(last_line[0], last_line[1], frame_counter + 1, target, half2)
 
         last_line = (h1, h2, latlon, location_name)
 
