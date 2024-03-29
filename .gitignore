@@ -1,0 +1,8 @@
+*.tsv
+*.csv
+*.blend
+*.blend1
+*.mp4
+out/
+*.gpkg
+*.mkv
