@@ -20,7 +20,7 @@ if "bpyutils" in locals():
 else:
     from bpyutils import *
 
-data = getData("G:\\gink\\mapplacer\\output3.tsv")
+data = getData(path + "\\v2.tsv")
 
 textScale = [2, 2, 2]
 textLocation = [.9, 2, .4]
@@ -649,7 +649,7 @@ def rotate_plane_to_target(plane, current, target, frame):
     plane.keyframe_insert(data_path="rotation_euler", frame=frame)
     posneg = -1 if plane.rotation_euler.y > 0 else 1
     set_loc_rotation(plane, (0, 0, math.radians(15 * posneg)))
-    plane.keyframe_insert(data_path="rotation_euler", frame=frame + step / 3 * 2)
+    # plane.keyframe_insert(data_path="rotation_euler", frame=frame + step / 3 * 2)
     set_loc_rotation(plane, (0, 0, math.radians(5 * posneg * -1)))
     plane.keyframe_insert(data_path="rotation_euler", frame=frame + step * 2)
     #also move it out along sphere normal by 1
