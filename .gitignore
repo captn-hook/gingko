@@ -6,3 +6,5 @@
 out/
 *.gpkg
 *.mkv
+__pycache__/
+blender-3.6.9-linux-x64/

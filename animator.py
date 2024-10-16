@@ -20,7 +20,7 @@ if "bpyutils" in locals():
 else:
     from bpyutils import *
 
-data = getData("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output4.tsv")
+data = getData("./output_with_colors.tsv")
 
 textScale = [2, 2, 2]
 textLocation = [.9, 2, .4]

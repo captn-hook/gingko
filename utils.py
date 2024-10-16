@@ -116,13 +116,13 @@ def slerp(p0, p1, t):
 
 def fixStupid():
     #fixes the stupid data by turning Date into sequential integers
-    data = getData("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output3.tsv")
+    data = getData("./output_with_colors.tsv")
 
     for i in range(len(data[dstring])):
         data[dstring][i] = i
 
     #save to new file
-    with open("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output4.tsv", 'w', newline='') as f:
+    with open("./output4.tsv", 'w', newline='') as f:
         writer = csv.writer(f, delimiter='\t')
         writer.writerow([dstring] + [h for h in data if h != dstring])
         for i in range(len(data[dstring])):
