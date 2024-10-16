@@ -4,7 +4,7 @@ import requests
 
 #data is currently in ./data.tsv
 
-data = pd.read_csv('./data3.csv', sep=',')
+data = pd.read_csv('./2024_oct_16_q_data.csv', sep=',')
 
 #print headers
 #print(data.columns)
@@ -25,47 +25,78 @@ def datesToInteger(dates):
 
 
 #we want the lat and long of each location from the location column 
-#COLLECTION_DATE,FLIGHT_COUNTRY_OF_ORIGIN,LINEAGE,Highlight Color,City name
+#DATE,FLIGHT_COUNTRY_OF_ORIGIN,LINEAGE,Highlight Color,City name
 
 localities = data['FLIGHT_COUNTRY_OF_ORIGIN'].tolist()
-dates = data['COLLECTION_DATE'].tolist()
+dates = data['DATE'].tolist()
 
 dates = datesToInteger(dates)
 
 output_df = pd.DataFrame(columns=['Date', 'Latitude', 'Longitude', 'City', 'Country', 'Lineage', 'Color'])
 
-output_df['Date'] = data['COLLECTION_DATE'].apply(lambda x: dates[x])
-output_df['City'] = data['City name']
+output_df['Date'] = data['DATE'].apply(lambda x: dates[x])
+#output_df['City'] = data['City name']
 output_df['Country'] = data['FLIGHT_COUNTRY_OF_ORIGIN']
 output_df['Lineage'] = data['LINEAGE']
-output_df['Color'] = data['Highlight Color']
+#output_df['Color'] = data['Highlight Color']
+output_df['Airport'] = data['Airport']
 
 issues = []
 #output_df['Location'] = localities.apply(lambda x: [i.strip() for i in x.split('/') if i][-1])
 # Create a dictionary to store queried locations
 queried_locations = {}
+
+headers = {
+    'User-Agent': 'my map tool'
+}
+
 for i in range(len(localities)):
-    
-    #query like 'City name, FLIGHT_COUNTRY_OF_ORIGIN'
-    query = data['City name'][i] + ', ' + data['FLIGHT_COUNTRY_OF_ORIGIN'][i]
-    # Check if the location has already been queried
+    query = data['FLIGHT_COUNTRY_OF_ORIGIN'][i] + ' Airport'
     if query in queried_locations:
         output_df.loc[i, 'Latitude'] = queried_locations[query]['lat']
         output_df.loc[i, 'Longitude'] = queried_locations[query]['lon']
     else:
-                
         url = 'https://nominatim.openstreetmap.org/search?q=' + urllib.parse.quote(query) + '&format=json'
-        #url = 'https://nominatim.openstreetmap.org/search?q=' + urllib.parse.quote(query + ' Airport') + '&format=json'
-        response = requests.get(url).json()
-
-        if response:
-            queried_locations[query] = {'lat': response[0]['lat'], 'lon': response[0]['lon']}
-            output_df.loc[i, 'Latitude'] = response[0]['lat']
-            output_df.loc[i, 'Longitude'] = response[0]['lon']
-            
-        else:
-            print('No results found for query: ' + query)
+        response = requests.get(url, headers=headers)
         
-            queried_locations[query] = {'lat': 'N/A', 'lon': 'N/A'}
+        # print(f"Query: {query}")
+        # print(f"Status Code: {response.status_code}")
+        # print(f"Response Text: {response.text}")
 
-output_df.to_csv('output3.tsv', sep='\t', index=False)
+        if response.status_code == 200:
+            try:
+                response_json = response.json()
+                if response_json:
+                    queried_locations[query] = {'lat': response_json[0]['lat'], 'lon': response_json[0]['lon']}
+                    output_df.loc[i, 'Latitude'] = response_json[0]['lat']
+                    output_df.loc[i, 'Longitude'] = response_json[0]['lon']
+                else:
+                    issues.append([i, data['FLIGHT_COUNTRY_OF_ORIGIN'][i]])
+            except ValueError:
+                issues.append([i, data['FLIGHT_COUNTRY_OF_ORIGIN'][i]])
+        else:
+            issues.append([i, data['FLIGHT_COUNTRY_OF_ORIGIN'][i]])
+
+print(issues)
+
+for issue in issues:
+    i, location = issue
+
+    url = 'https://nominatim.openstreetmap.org/search?q=' + urllib.parse.quote(location) + '&format=json'
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        try:
+            response_json = response.json()
+            if response_json:
+                queried_locations[location] = {'lat': response_json[0]['lat'], 'lon': response_json[0]['lon']}
+                output_df.loc[i, 'Latitude'] = response_json[0]['lat']
+                output_df.loc[i, 'Longitude'] = response_json[0]['lon']
+            else:
+               print(f"Could not find location: {location}")    
+        except ValueError:
+            print(f"Could not find location: {location}")
+    else:
+        print(f"Could not find location: {location}")
+
+output_df.to_csv('output.tsv', sep='\t', index=False)
