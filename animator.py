@@ -20,7 +20,7 @@ if "bpyutils" in locals():
 else:
     from bpyutils import *
 
-data = getData("G:\\gink\\mapplacer\\output3.tsv")
+data = getData("./output_with_colors.tsv")
 
 textScale = [2, 2, 2]
 textLocation = [.9, 2, .4]
@@ -613,6 +613,8 @@ def main(cameraEmpty, cam):
         last_line = (h1, h2, latlon, country, frame, plane, texte)
 
         if country != "End":
+            print('error: ' + str(i) + ' ' + str(country) + ' ' + str(lineage))
+            print('from: ', labeled)
             labeled[country] = (labeled[country][0], labeled[country][1], color)
 
         frame_counter += 1  # Increment the frame counter
