@@ -7,3 +7,5 @@ out/
 *.gpkg
 *.mkv
 *.tif
+blender-3.6.9-linux-x64/
+__pycache__/

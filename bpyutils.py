@@ -158,7 +158,7 @@ def find_collection(name, fuzzy=False):
     return None
 
 def check_countries(fuzzy=True):
-    data = getData("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output3.tsv")
+    data = getData("./output_with_colors.tsv")
     done = []
     #for every country in the data
     for country in data['Country']:
