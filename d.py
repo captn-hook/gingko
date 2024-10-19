@@ -1,12 +1,26 @@
 import pandas as pd
 
-data = pd.read_csv("./output_with_colors2.tsv", sep='\t')
+data = pd.read_csv("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\2024_oct_16_q_data.csv", sep=',')
+data2 = pd.read_csv("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output_with_colors3.tsv", sep='\t')
 
-new_colors = pd.read_csv("./colors2.tsv", sep='\t')
+print("Columns in data:", data.columns)
+print("Columns in data2:", data2.columns)
 
-# match labels to new color
+# get the dates in order
+dates = data["DATE"].unique()
+dates.sort()
+print("Dates:", dates)
 
-data['Color'] = data['Lineage'].map(new_colors.set_index('Lineage')['Color'])
+# create a mapping of dates to an integer starting from 1
+date_map = {date: i+1 for i, date in enumerate(dates)}
 
-# save to new file
-data.to_csv("./output_with_colors3.tsv", sep='\t', index=False)
+print("Date map:", date_map)
+
+# replace data2 "Date" column
+# then replace that with the integer mapping
+data2["Date"] = data["DATE"].map(date_map)
+
+print(data2)
+
+# save as out 4
+data2.to_csv("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output_with_colors4.tsv", sep='\t', index=False)

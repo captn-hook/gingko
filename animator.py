@@ -20,7 +20,8 @@ if "bpyutils" in locals():
 else:
     from bpyutils import *
 
-data = getData(path + "\\v2.tsv")
+data = getData(path + "\\output_with_colors4.tsv")
+data['Date'] = list(map(float, data['Date']))
 
 textScale = [2, 2, 2]
 textLocation = [.9, 2, .4]
@@ -353,7 +354,12 @@ def main(cameraEmpty, cam):
     frame_counter = frame_start  # Start the frame counter at 0
     last_line = None  # Lines take into account the location of the NEXT node
     stack_list = []
+    last_frame = 0
     for i in range(len(data['Date']) + 1): # we need an extra loop cus we do stuff i + 1
+        # progress tracking
+        # if i is evenly divisible by 25, print precentage of completion
+        if i % 25 == 0:
+            print(f"Progress: {i / len(data['Date']) * 100:.2f}%")
         # get data for this location
         if i < len(data['Date']):
             latlon = float(data['Latitude'][i]), float(data['Longitude'][i])
@@ -383,7 +389,13 @@ def main(cameraEmpty, cam):
         #     #if we are moving to a new location, increment the frame counter
         #     frame_counter += 1.5
 
-        frame = frame_counter * step
+        # frame = frame_counter * step
+        if i < len(data['Date']):
+            frame = data['Date'][i] * step
+        else:
+            frame = last_frame + step
+
+        last_frame = frame
 
         # coords = equirectangularProjection(location[0], location[1])
         coords = sphericalProjection(latlon[0], latlon[1])
@@ -589,7 +601,7 @@ def main(cameraEmpty, cam):
             #line keyframes
             keyframeVisible(line, frame)
             keyframeInvisible(line, frame - 1)
-            keyframeInvisible(line, (frame_counter + 2) * step, False)
+            keyframeInvisible(line, (data['Date'][i] + 2) * step, False)
             keyframeLineThickness(line, frame - step / 2, .3)
             keyframeLineThickness(line, frame + step / 2, .15)
             keyframeLineThickness(line, frame + step * 1.5, 0)
@@ -613,8 +625,6 @@ def main(cameraEmpty, cam):
         last_line = (h1, h2, latlon, country, frame, plane, texte)
 
         if country != "End":
-            print('error: ' + str(i) + ' ' + str(country) + ' ' + str(lineage))
-            print('from: ', labeled)
             labeled[country] = (labeled[country][0], labeled[country][1], color)
 
         frame_counter += 1  # Increment the frame counter
@@ -669,6 +679,11 @@ def layout():
 
 
 def get_target(normal):
+
+    # ovveride the target to be DOH airport: 25.270498918 51.604830914
+    # coords = sphericalProjection(25.270498918, 51.604830914)
+    # return Vector(coords[0], coords[1], coords[2])
+
     # Convert the normal vector to spherical coordinates
     r = normal.length
     theta = math.acos(normal.z / r)
@@ -690,9 +705,12 @@ def get_target(normal):
     return Vector((x, y, z)).normalized() * sphereRadius
 
 def targ(coords):
-    normal = sphereNormal(coords)
+    
+    # normal = sphereNormal(coords)
+    # target = get_target(normal)
 
-    target = get_target(normal)
+    target = sphericalProjection(25.270498918, 51.604830914)
+    target = Vector(target)
 
     mid = spherical_midpoint_from_cartesian(Vector(coords), Vector(target))
     # add a little theta to the midpoint so that the line arcs towards north

@@ -37,6 +37,20 @@ def getData(path):
             if h != dstring:
                 data[h] = other_data[i-1]
 
+    stupid2 = False #if the data is in the wrong order
+    if stupid2 == True:
+        # convert dstring to integers
+        data[dstring] = list(map(int, data[dstring]))
+        # order the data by dstring column
+        data_pairs = list(zip(data[dstring], *[data[h] for h in headers if h != dstring]))
+        data_pairs.sort()
+        data[dstring], *other_data = zip(*data_pairs)
+        for i, h in enumerate(headers):
+            if h != dstring:
+                data[h] = other_data[i-1]
+
+        print(data[dstring])
+
     return data
 
 def ls(path):
@@ -139,13 +153,13 @@ def slerp(p0, p1, t):
 
 def fixStupid():
     #fixes the stupid data by turning Date into sequential integers
-    data = getData("./output_with_colors.tsv")
+    data = getData("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output_with_colors4.tsv")
 
     for i in range(len(data[dstring])):
         data[dstring][i] = i
 
     #save to new file
-    with open("./output_with_colors2.tsv", 'w', newline='') as f:
+    with open("C:\\Users\\trist\\Desktop\\gingkoi\\mapplacer\\output_with_colors4.tsv", 'w', newline='') as f:
         writer = csv.writer(f, delimiter='\t')
         writer.writerow([dstring] + [h for h in data if h != dstring])
         for i in range(len(data[dstring])):
